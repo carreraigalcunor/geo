@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mapa de Tesis y EPS IGAL</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@1.6.0/Control.FullScreen.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.fullscreen@1.6.0/Control.FullScreen.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet.featuregroup.subgroup/dist/leaflet.featuregroup.subgroup.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      width: 100%;
+      height: 75vh;
+    }
+
+    #contenedorBusqueda {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      z-index: 1000;
+      width: 300px;
+      max-width: calc(100% - 40px);
+      max-height: 70vh;
+      box-sizing: border-box;
+      padding: 12px;
+      overflow-y: auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,.35);
+      transition: transform .25s ease, opacity .25s ease;
+    }
+
+    #contenedorBusqueda.oculto {
+      transform: translateX(-120%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #encabezadoFiltros {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    #tituloFiltros {
+      font-size: 16px;
+      font-weight: bold;
+      color: #1d2782;
+    }
+
+    #btnOcultarPanel {
+      width: 30px;
+      height: 30px;
+      border: none;
+      border-radius: 50%;
+      background: #eee;
+      color: #333;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #btnMostrarPanel {
+      display: none;
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      z-index: 1001;
+      width: 48px;
+      height: 48px;
+      border: none;
+      border-radius: 50%;
+      background: #1d2782;
+      color: white;
+      box-shadow: 0 0 9px rgba(0,0,0,.35);
+      cursor: pointer;
+      font-size: 21px;
+    }
+
+    .etiqueta-filtro {
+      display: block;
+      margin-top: 7px;
+      margin-bottom: 2px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    #contenedorBusqueda input,
+    #contenedorBusqueda select {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 7px;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    #contenedorBotones {
+      display: flex;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    #btnBuscar,
+    #btnLimpiar {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      cursor: pointer;
+    }
+
+    #btnBuscar { background: #1d2782; }
+    #btnLimpiar { background: #666; }
+
+    #contadorResultados {
+      margin-top: 10px;
+      padding: 7px;
+      border-radius: 4px;
+      background: #f2f3ff;
+      color: #1d2782;
+      font-size: 13px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    #resultadosBusqueda {
+      max-height: 220px;
+      margin-top: 7px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+
+    .resultado-item {
+      padding: 9px 5px;
+      border-bottom: 1px solid #ddd;
+      cursor: pointer;
+    }
+
+    .resultado-item:hover {
+      background: #f4f4f4;
+    }
+
+    .resultado-nombre {
+      display: block;
+      color: #1d2782;
+      font-weight: bold;
+    }
+
+    .resultado-detalle {
+      display: block;
+      margin-top: 3px;
+      color: #555;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    #visorDocumento {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      padding: 15px;
+      background: rgba(0,0,0,.82);
+    }
+
+    #visorContenido {
+      display: flex;
+      flex-direction: column;
+      width: 95%;
+      max-width: 1200px;
+      height: 92vh;
+      overflow: hidden;
+      background: white;
+      border-radius: 10px;
+    }
+
+    #visorEncabezado {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 10px 15px;
+      background: #1d2782;
+      color: white;
+    }
+
+    #tituloVisor {
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 16px;
+    }
+
+    #accionesVisor {
+      display: flex;
+      gap: 8px;
+    }
+
+    #abrirNuevaPestana,
+    #cerrarVisor {
+      padding: 7px 11px;
+      border-radius: 5px;
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.7);
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    #abrirNuevaPestana { background: #08783e; }
+    #cerrarVisor { background: #b42318; }
+
+    #marcoDocumento {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background: #f3f3f3;
+    }
+
+    .boton-documento {
+      margin-top: 9px;
+      padding: 7px 12px;
+      border: none;
+      border-radius: 5px;
+      background: #1d2782;
+      color: white;
+      cursor: pointer;
+    }
+
+    @media (max-width: 700px) {
+      #contenedorBusqueda {
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-width: none;
+        max-height: 60vh;
+      }
+
+      #visorContenido {
+        width: 100%;
+        height: 95vh;
+      }
+
+      #visorEncabezado {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      #accionesVisor {
+        width: 100%;
+      }
+
+      #abrirNuevaPestana,
+      #cerrarVisor {
+        flex: 1;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="map"></div>
+
+  <button id="btnMostrarPanel" type="button" title="Mostrar filtros">🔎</button>
+
+  <div id="contenedorBusqueda">
+    <div id="encabezadoFiltros">
+      <div id="tituloFiltros">Filtrar registros</div>
+      <button id="btnOcultarPanel" type="button" title="Ocultar filtros">×</button>
+    </div>
+
+    <label class="etiqueta-filtro" for="filtroNombre">Nombre</label>
+    <input type="text" id="filtroNombre" placeholder="Nombre del estudiante">
+
+    <label class="etiqueta-filtro" for="filtroTitulo">Título</label>
+    <input type="text" id="filtroTitulo" placeholder="Palabra contenida en el título">
+
+    <label class="etiqueta-filtro" for="filtroTipo">Tipo</label>
+    <select id="filtroTipo">
+      <option value="">Todos los tipos</option>
+    </select>
+
+    <label class="etiqueta-filtro" for="filtroDepartamento">Departamento</label>
+    <select id="filtroDepartamento">
+      <option value="">Todos los departamentos</option>
+    </select>
+
+    <label class="etiqueta-filtro" for="filtroMunicipio">Municipio</label>
+    <select id="filtroMunicipio">
+      <option value="">Todos los municipios</option>
+    </select>
+
+    <label class="etiqueta-filtro" for="filtroAnio">Año</label>
+    <select id="filtroAnio">
+      <option value="">Todos los años</option>
+    </select>
+
+    <div id="contenedorBotones">
+      <button id="btnBuscar" type="button">Filtrar</button>
+      <button id="btnLimpiar" type="button">Limpiar</button>
+    </div>
+
+    <div id="contadorResultados">Cargando registros...</div>
+    <div id="resultadosBusqueda"></div>
+  </div>
+
+  <div id="visorDocumento">
+    <div id="visorContenido">
+      <div id="visorEncabezado">
+        <h3 id="tituloVisor">Documento</h3>
+        <div id="accionesVisor">
+          <a id="abrirNuevaPestana" href="#" target="_blank" rel="noopener noreferrer">Abrir aparte</a>
+          <button id="cerrarVisor" type="button">Cerrar</button>
+        </div>
+      </div>
+      <iframe id="marcoDocumento" title="Visualizador de documentos" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <script>
+    let map;
+    let todosLosMarcadores = [];
+    let clusterGroup;
+    let subGrupoEPS;
+    let subGrupoTesis;
+    let grupoMarcadoresFiltrados;
+    let temporizadorNombre;
+    let temporizadorTitulo;
+
+    function normalizarTexto(valor) {
+      return String(valor || "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function escaparHTML(valor) {
+      return String(valor || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function limpiarEnlace(enlace) {
+      return String(enlace || "")
+        .trim()
+        .replace(/^["']+|["']+$/g, "")
+        .replace(/&amp;/g, "&");
+    }
+
+    function convertirEnlaceDrive(enlace) {
+      const url = limpiarEnlace(enlace);
+      let coincidencia = url.match(/drive\.google\.com\/file\/d\/([^/?#]+)/i);
+
+      if (coincidencia && coincidencia[1]) {
+        return "https://drive.google.com/file/d/" + coincidencia[1] + "/preview";
+      }
+
+      coincidencia = url.match(/[?&]id=([^&#]+)/i);
+
+      if (url.includes("drive.google.com") && coincidencia && coincidencia[1]) {
+        return "https://drive.google.com/file/d/" + coincidencia[1] + "/preview";
+      }
+
+      return url;
+    }
+
+    function obtenerEnlaceVisualizacion(enlace) {
+      const url = limpiarEnlace(enlace);
+
+      if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
+        return convertirEnlaceDrive(url);
+      }
+
+      return url;
+    }
+
+    function abrirDocumento(enlace, titulo) {
+      const original = limpiarEnlace(enlace);
+      const visualizacion = obtenerEnlaceVisualizacion(original);
+
+      if (!visualizacion) {
+        alert("Este registro no tiene un enlace válido.");
+        return;
+      }
+
+      document.getElementById("tituloVisor").textContent = titulo || "Documento";
+      document.getElementById("marcoDocumento").src = visualizacion;
+      document.getElementById("abrirNuevaPestana").href = original;
+      document.getElementById("visorDocumento").style.display = "flex";
+    }
+
+    function cerrarDocumento() {
+      document.getElementById("visorDocumento").style.display = "none";
+      document.getElementById("marcoDocumento").src = "";
+    }
+
+    function agregarOpcionSelect(select, valor) {
+      const opcion = document.createElement("option");
+      opcion.value = valor;
+      opcion.textContent = valor;
+      select.appendChild(opcion);
+    }
+
+    function cargarOpcionesFiltros() {
+      const departamentos = new Set();
+      const municipios = new Set();
+      const anios = new Set();
+      const tipos = new Set();
+
+      todosLosMarcadores.forEach(marker => {
+        const datos = marker.options.datos || {};
+        if (datos.Departamento) departamentos.add(datos.Departamento);
+        if (datos.Municipio) municipios.add(datos.Municipio);
+        if (datos.Año) anios.add(datos.Año);
+        if (datos.Tipo) tipos.add(datos.Tipo);
+      });
+
+      const dep = document.getElementById("filtroDepartamento");
+      const mun = document.getElementById("filtroMunicipio");
+      const anio = document.getElementById("filtroAnio");
+      const tipo = document.getElementById("filtroTipo");
+
+      dep.innerHTML = '<option value="">Todos los departamentos</option>';
+      mun.innerHTML = '<option value="">Todos los municipios</option>';
+      anio.innerHTML = '<option value="">Todos los años</option>';
+      tipo.innerHTML = '<option value="">Todos los tipos</option>';
+
+      [...departamentos].sort((a,b)=>a.localeCompare(b,"es")).forEach(v=>agregarOpcionSelect(dep,v));
+      [...municipios].sort((a,b)=>a.localeCompare(b,"es")).forEach(v=>agregarOpcionSelect(mun,v));
+      [...anios].sort((a,b)=>Number(b)-Number(a)).forEach(v=>agregarOpcionSelect(anio,v));
+      [...tipos].sort((a,b)=>a.localeCompare(b,"es")).forEach(v=>agregarOpcionSelect(tipo,v));
+    }
+
+    function actualizarMunicipiosPorDepartamento() {
+      const departamentoSeleccionado = normalizarTexto(
+        document.getElementById("filtroDepartamento").value
+      );
+
+      const selectMunicipio = document.getElementById("filtroMunicipio");
+      const anterior = selectMunicipio.value;
+      const municipios = new Set();
+
+      todosLosMarcadores.forEach(marker => {
+        const datos = marker.options.datos || {};
+        const dep = normalizarTexto(datos.Departamento);
+        const mun = String(datos.Municipio || "").trim();
+
+        if (mun && (!departamentoSeleccionado || dep === departamentoSeleccionado)) {
+          municipios.add(mun);
+        }
+      });
+
+      selectMunicipio.innerHTML = '<option value="">Todos los municipios</option>';
+
+      [...municipios].sort((a,b)=>a.localeCompare(b,"es")).forEach(v=>{
+        agregarOpcionSelect(selectMunicipio,v);
+      });
+
+      if ([...selectMunicipio.options].some(o=>o.value===anterior)) {
+        selectMunicipio.value = anterior;
+      }
+    }
+
+    function crearElementoResultado(marker) {
+      const datos = marker.options.datos || {};
+      const div = document.createElement("div");
+      div.className = "resultado-item";
+
+      const ubicacion = [datos.Municipio, datos.Departamento].filter(Boolean).join(", ");
+
+      div.innerHTML = `
+        <span class="resultado-nombre">${escaparHTML(datos.Nombre || "Sin nombre")}</span>
+        ${ubicacion ? `<span class="resultado-detalle">📍 ${escaparHTML(ubicacion)}</span>` : ""}
+        ${datos.Tipo ? `<span class="resultado-detalle">📄 ${escaparHTML(datos.Tipo)}</span>` : ""}
+        ${datos.Año ? `<span class="resultado-detalle">📅 Año: ${escaparHTML(datos.Año)}</span>` : ""}
+        ${datos.Título ? `<span class="resultado-detalle">📝 ${escaparHTML(datos.Título)}</span>` : ""}
+      `;
+
+      div.addEventListener("click", function () {
+        if (
+          grupoMarcadoresFiltrados &&
+          map.hasLayer(grupoMarcadoresFiltrados) &&
+          grupoMarcadoresFiltrados.hasLayer(marker)
+        ) {
+          grupoMarcadoresFiltrados.zoomToShowLayer(marker, function () {
+            map.setView(marker.getLatLng(), 16);
+            marker.openPopup();
+          });
+        } else {
+          clusterGroup.zoomToShowLayer(marker, function () {
+            map.setView(marker.getLatLng(), 16);
+            marker.openPopup();
+          });
+        }
+      });
+
+      return div;
+    }
+
+    function mostrarMarcadoresFiltrados(marcadores) {
+      if (map.hasLayer(subGrupoEPS)) map.removeLayer(subGrupoEPS);
+      if (map.hasLayer(subGrupoTesis)) map.removeLayer(subGrupoTesis);
+      if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
+      if (map.hasLayer(grupoMarcadoresFiltrados)) map.removeLayer(grupoMarcadoresFiltrados);
+
+      grupoMarcadoresFiltrados.clearLayers();
+      marcadores.forEach(marker => grupoMarcadoresFiltrados.addLayer(marker));
+      grupoMarcadoresFiltrados.addTo(map);
+
+      if (marcadores.length > 0) {
+        const limites = grupoMarcadoresFiltrados.getBounds();
+        if (limites.isValid()) {
+          map.fitBounds(limites, { padding: [40,40], maxZoom: 14 });
+        }
+      }
+    }
+
+    function restaurarTodosLosMarcadores() {
+      if (map.hasLayer(grupoMarcadoresFiltrados)) {
+        map.removeLayer(grupoMarcadoresFiltrados);
+      }
+
+      grupoMarcadoresFiltrados.clearLayers();
+
+      if (!map.hasLayer(clusterGroup)) clusterGroup.addTo(map);
+      if (!map.hasLayer(subGrupoEPS)) subGrupoEPS.addTo(map);
+      if (!map.hasLayer(subGrupoTesis)) subGrupoTesis.addTo(map);
+
+      if (todosLosMarcadores.length > 0) {
+        const limites = L.featureGroup(todosLosMarcadores).getBounds();
+        if (limites.isValid()) {
+          map.fitBounds(limites, { padding: [25,25], maxZoom: 14 });
+        }
+      }
+    }
+
+    function buscarMarcadoresCombinados() {
+      const nombre = normalizarTexto(document.getElementById("filtroNombre").value);
+      const titulo = normalizarTexto(document.getElementById("filtroTitulo").value);
+      const tipo = normalizarTexto(document.getElementById("filtroTipo").value);
+      const departamento = normalizarTexto(document.getElementById("filtroDepartamento").value);
+      const municipio = normalizarTexto(document.getElementById("filtroMunicipio").value);
+      const anio = normalizarTexto(document.getElementById("filtroAnio").value);
+
+      const resultadosDiv = document.getElementById("resultadosBusqueda");
+      const contadorDiv = document.getElementById("contadorResultados");
+      resultadosDiv.innerHTML = "";
+
+      const hayFiltros = nombre || titulo || tipo || departamento || municipio || anio;
+
+      if (!hayFiltros) {
+        restaurarTodosLosMarcadores();
+        contadorDiv.textContent = todosLosMarcadores.length + " registro(s) en el mapa";
+        return;
+      }
+
+      const encontrados = todosLosMarcadores.filter(marker => {
+        const datos = marker.options.datos || {};
+
+        return (
+          (!nombre || normalizarTexto(datos.Nombre).includes(nombre)) &&
+          (!titulo || normalizarTexto(datos.Título).includes(titulo)) &&
+          (!tipo || normalizarTexto(datos.Tipo) === tipo) &&
+          (!departamento || normalizarTexto(datos.Departamento) === departamento) &&
+          (!municipio || normalizarTexto(datos.Municipio) === municipio) &&
+          (!anio || normalizarTexto(datos.Año) === anio)
+        );
+      });
+
+      contadorDiv.textContent = encontrados.length + " registro(s) encontrado(s)";
+      mostrarMarcadoresFiltrados(encontrados);
+
+      if (encontrados.length === 0) {
+        resultadosDiv.innerHTML = "<em>No se encontraron registros.</em>";
+        return;
+      }
+
+      encontrados.forEach(marker => {
+        resultadosDiv.appendChild(crearElementoResultado(marker));
+      });
+
+      if (encontrados.length === 1) {
+        grupoMarcadoresFiltrados.zoomToShowLayer(encontrados[0], function () {
+          encontrados[0].openPopup();
+        });
+      }
+    }
+
+    function limpiarFiltros() {
+      document.getElementById("filtroNombre").value = "";
+      document.getElementById("filtroTitulo").value = "";
+      document.getElementById("filtroTipo").value = "";
+      document.getElementById("filtroDepartamento").value = "";
+      document.getElementById("filtroAnio").value = "";
+
+      actualizarMunicipiosPorDepartamento();
+      document.getElementById("filtroMunicipio").value = "";
+      document.getElementById("resultadosBusqueda").innerHTML = "";
+      document.getElementById("contadorResultados").textContent =
+        todosLosMarcadores.length + " registro(s) en el mapa";
+
+      restaurarTodosLosMarcadores();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      map = L.map("map", {
+        fullscreenControl: true,
+        fullscreenControlOptions: { position: "topleft" }
+      }).setView([15.5, -90.5], 7);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+        maxZoom: 19
+      }).addTo(map);
+
+      const iconEPS = L.icon({
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/4282/4282716.png",
+        iconSize: [22,22],
+        iconAnchor: [11,22],
+        popupAnchor: [0,-22]
+      });
+
+      const iconTesis = L.icon({
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/5326/5326581.png",
+        iconSize: [22,22],
+        iconAnchor: [11,22],
+        popupAnchor: [0,-22]
+      });
+
+      clusterGroup = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        removeOutsideVisibleBounds: true
+      });
+
+      subGrupoEPS = L.featureGroup.subGroup(clusterGroup);
+      subGrupoTesis = L.featureGroup.subGroup(clusterGroup);
+
+      grupoMarcadoresFiltrados = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        removeOutsideVisibleBounds: true
+      });
+
+      clusterGroup.addTo(map);
+      subGrupoEPS.addTo(map);
+      subGrupoTesis.addTo(map);
+
+      document.getElementById("cerrarVisor").addEventListener("click", cerrarDocumento);
+
+      document.getElementById("visorDocumento").addEventListener("click", function (evento) {
+        if (evento.target.id === "visorDocumento") cerrarDocumento();
+      });
+
+      document.addEventListener("keydown", function (evento) {
+        if (evento.key === "Escape") cerrarDocumento();
+      });
+
+      document.getElementById("btnOcultarPanel").addEventListener("click", function () {
+        document.getElementById("contenedorBusqueda").classList.add("oculto");
+        document.getElementById("btnMostrarPanel").style.display = "block";
+      });
+
+      document.getElementById("btnMostrarPanel").addEventListener("click", function () {
+        document.getElementById("contenedorBusqueda").classList.remove("oculto");
+        document.getElementById("btnMostrarPanel").style.display = "none";
+      });
+
+      document.getElementById("btnBuscar").addEventListener("click", buscarMarcadoresCombinados);
+      document.getElementById("btnLimpiar").addEventListener("click", limpiarFiltros);
+
+      document.getElementById("filtroDepartamento").addEventListener("change", function () {
+        actualizarMunicipiosPorDepartamento();
+        buscarMarcadoresCombinados();
+      });
+
+      document.getElementById("filtroMunicipio").addEventListener("change", buscarMarcadoresCombinados);
+      document.getElementById("filtroAnio").addEventListener("change", buscarMarcadoresCombinados);
+      document.getElementById("filtroTipo").addEventListener("change", buscarMarcadoresCombinados);
+
+      document.getElementById("filtroNombre").addEventListener("input", function () {
+        clearTimeout(temporizadorNombre);
+        temporizadorNombre = setTimeout(buscarMarcadoresCombinados, 350);
+      });
+
+      document.getElementById("filtroTitulo").addEventListener("input", function () {
+        clearTimeout(temporizadorTitulo);
+        temporizadorTitulo = setTimeout(buscarMarcadoresCombinados, 350);
+      });
+
+      const csvUrl =
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvTb_ChQFXY1GnAVc61Gwj8AiJXp7snkD3C-Lx157y45UATo14QUpWVkiC_DwUnGKgkHfJyxoHsusD/pub?output=csv";
+
+      Papa.parse(csvUrl, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+
+        complete: function (results) {
+          const limitesGenerales = [];
+
+          results.data.forEach(function (row) {
+            const lat = parseFloat(String(row.Latitud || "").replace(",", "."));
+            const lng = parseFloat(String(row.Longitud || "").replace(",", "."));
+
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            const tipoOriginal = String(row.Tipo || "").trim();
+            const tipoNormalizado = normalizarTexto(tipoOriginal).toUpperCase();
+
+            const enlace = limpiarEnlace(
+              row.link || row.Link || row.enlace || row.Enlace || row.URL || row.Url || ""
+            );
+
+            const nombre = String(row.Nombre || "Sin nombre").trim();
+            const titulo = String(row["Título"] || row.Titulo || "").trim();
+            const anio = String(row["Año"] || row.Ano || "").trim();
+            const departamento = String(row.Departamento || "").trim();
+            const municipio = String(row.Municipio || "").trim();
+            const lugar = String(row.Lugar || "").trim();
+
+            const icono = tipoNormalizado === "EPS" ? iconEPS : iconTesis;
+
+            let botonDocumento = `
+              <div style="margin-top:8px;color:#777;font-size:12px;font-style:italic;">
+                Documento no disponible
+              </div>
+            `;
+
+            if (enlace) {
+              botonDocumento = `
+                <button
+                  type="button"
+                  class="boton-documento"
+                  onclick="
+                    abrirDocumento(
+                      decodeURIComponent('${encodeURIComponent(enlace)}'),
+                      decodeURIComponent('${encodeURIComponent(titulo || nombre)}')
+                    )
+                  "
+                >
+                  Ver documento
+                </button>
+              `;
+            }
+
+            const popupContent = `
+              <div style="width:280px;max-width:100%;font-family:Arial,sans-serif;">
+                <div style="margin-bottom:7px;color:#1d2782;font-size:16px;font-weight:bold;">
+                  ${escaparHTML(nombre)}
+                </div>
+
+                ${municipio || departamento ? `
+                  <div style="margin-bottom:4px;">📍 ${escaparHTML([municipio, departamento].filter(Boolean).join(", "))}</div>
+                ` : ""}
+
+                ${tipoOriginal ? `<div style="margin-bottom:4px;">📄 ${escaparHTML(tipoOriginal)}</div>` : ""}
+                ${anio ? `<div style="margin-bottom:4px;">📅 Año: ${escaparHTML(anio)}</div>` : ""}
+                ${titulo ? `<div style="margin-top:7px;line-height:1.4;">📝 ${escaparHTML(titulo)}</div>` : ""}
+                ${lugar ? `<div style="margin-top:5px;"><strong>Lugar:</strong> ${escaparHTML(lugar)}</div>` : ""}
+
+                ${botonDocumento}
+              </div>
+            `;
+
+            const datos = {
+              Nombre: nombre,
+              Título: titulo,
+              Tipo: tipoOriginal,
+              Año: anio,
+              Departamento: departamento,
+              Municipio: municipio,
+              Lugar: lugar,
+              link: enlace
+            };
+
+            const marker = L.marker([lat,lng], {
+              icon: icono,
+              datos: datos
+            }).bindPopup(popupContent, { maxWidth: 330 });
+
+            todosLosMarcadores.push(marker);
+            limitesGenerales.push([lat,lng]);
+
+            if (tipoNormalizado === "EPS") {
+              subGrupoEPS.addLayer(marker);
+            } else {
+              subGrupoTesis.addLayer(marker);
+            }
+          });
+
+          cargarOpcionesFiltros();
+          actualizarMunicipiosPorDepartamento();
+
+          L.control.layers(null, {
+            "<img src='https://cdn-icons-png.flaticon.com/512/4282/4282716.png' width='16'> EPS":  subGrupoEPS,
+            "<img src='https://cdn-icons-png.flaticon.com/512/5326/5326581.png' width='16'> Tesis": subGrupoTesis
+          }, {
+            collapsed: false
+          }).addTo(map);
+
+          document.getElementById("contadorResultados").textContent =
+            todosLosMarcadores.length + " registro(s) en el mapa";
+
+          if (limitesGenerales.length > 0) {
+            map.fitBounds(limitesGenerales, {
+              padding: [25,25],
+              maxZoom: 14
+            });
+          }
+        },
+
+        error: function (error) {
+          console.error("Error al cargar la hoja:", error);
+          document.getElementById("contadorResultados").textContent =
+            "No se pudieron cargar los registros.";
+        }
+      });
+    });
+  </script>
+</body>
+</html>
