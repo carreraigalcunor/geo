@@ -17,12 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <style>
-    :root {
-      --alto-pantalla: 100vh;
-    }
-
-    html,
-    body {
+    html, body {
       margin: 0 !important;
       padding: 0 !important;
       width: 100% !important;
@@ -32,19 +27,12 @@
       font-family: Arial, sans-serif;
     }
 
-    body {
-      position: fixed;
-      inset: 0;
-    }
-
     #map {
       position: fixed !important;
       inset: 0 !important;
-      width: 100vw !important;
-      height: var(--alto-pantalla) !important;
+      width: 100% !important;
+      height: 100% !important;
       min-height: 100vh !important;
-      min-height: 100svh !important;
-      min-height: 100dvh !important;
       margin: 0 !important;
       padding: 0 !important;
     }
@@ -365,22 +353,6 @@
   </div>
 
   <script>
-    function ajustarMapaAPantalla() {
-      const alto = window.innerHeight || document.documentElement.clientHeight || screen.height;
-      document.documentElement.style.setProperty("--alto-pantalla", alto + "px");
-      const mapa = document.getElementById("map");
-      if (mapa) mapa.style.height = alto + "px";
-      if (typeof map !== "undefined" && map) {
-        setTimeout(function () { map.invalidateSize(true); }, 100);
-      }
-    }
-
-    ajustarMapaAPantalla();
-    window.addEventListener("resize", ajustarMapaAPantalla);
-    window.addEventListener("orientationchange", function () {
-      setTimeout(ajustarMapaAPantalla, 250);
-    });
-
     let map;
     let todosLosMarcadores = [];
     let clusterGroup;
@@ -675,8 +647,13 @@
         fullscreenControlOptions: { position: "topleft" }
       }).setView([15.5, -90.5], 7);
 
-      ajustarMapaAPantalla();
-      setTimeout(function () { map.invalidateSize(true); }, 250);
+      setTimeout(function () {
+        map.invalidateSize(true);
+      }, 150);
+
+      window.addEventListener("resize", function () {
+        if (map) map.invalidateSize(true);
+      });
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap contributors",
