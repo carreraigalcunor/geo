@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -11,9 +12,13 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
   <script src="https://unpkg.com/leaflet.fullscreen@1.6.0/Control.FullScreen.js"></script>
+
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
   <script src="https://unpkg.com/leaflet.featuregroup.subgroup/dist/leaflet.featuregroup.subgroup.js"></script>
+
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <style>
@@ -26,7 +31,7 @@
 
     #map {
       width: 100%;
-      height: 100vh;
+      height: 75vh;
     }
 
     #contenedorBusqueda {
@@ -281,13 +286,14 @@
       }
     }
   </style>
+
 </head>
 
 <body>
 
   <div id="map"></div>
 
-  <button id="btnMostrarPanel" type="button" title="Mostrar filtros">🔎</button>
+<button id="btnMostrarPanel" type="button" title="Mostrar filtros">🔎</button>
 
   <div id="contenedorBusqueda">
     <div id="encabezadoFiltros">
@@ -295,39 +301,38 @@
       <button id="btnOcultarPanel" type="button" title="Ocultar filtros">×</button>
     </div>
 
-    <label class="etiqueta-filtro" for="filtroNombre">Nombre</label>
-    <input type="text" id="filtroNombre" placeholder="Nombre del estudiante">
+<label class="etiqueta-filtro" for="filtroNombre">Nombre</label><input type="text" id="filtroNombre" placeholder="Nombre del estudiante">
 
-    <label class="etiqueta-filtro" for="filtroTitulo">Título</label>
-    <input type="text" id="filtroTitulo" placeholder="Palabra contenida en el título">
+<label class="etiqueta-filtro" for="filtroTitulo">Título</label><input type="text" id="filtroTitulo" placeholder="Palabra contenida en el título">
 
-    <label class="etiqueta-filtro" for="filtroTipo">Tipo</label>
-    <select id="filtroTipo">
-      <option value="">Todos los tipos</option>
-    </select>
+<label class="etiqueta-filtro" for="filtroTipo">Tipo</label><select id="filtroTipo">
 
-    <label class="etiqueta-filtro" for="filtroDepartamento">Departamento</label>
-    <select id="filtroDepartamento">
-      <option value="">Todos los departamentos</option>
-    </select>
+  <option value="">Todos los tipos</option>
+</select>
 
-    <label class="etiqueta-filtro" for="filtroMunicipio">Municipio</label>
-    <select id="filtroMunicipio">
-      <option value="">Todos los municipios</option>
-    </select>
+<label class="etiqueta-filtro" for="filtroDepartamento">Departamento</label><select id="filtroDepartamento">
 
-    <label class="etiqueta-filtro" for="filtroAnio">Año</label>
-    <select id="filtroAnio">
-      <option value="">Todos los años</option>
-    </select>
+  <option value="">Todos los departamentos</option>
+</select>
 
-    <div id="contenedorBotones">
-      <button id="btnBuscar" type="button">Filtrar</button>
-      <button id="btnLimpiar" type="button">Limpiar</button>
-    </div>
+<label class="etiqueta-filtro" for="filtroMunicipio">Municipio</label><select id="filtroMunicipio">
 
-    <div id="contadorResultados">Cargando registros...</div>
-    <div id="resultadosBusqueda"></div>
+  <option value="">Todos los municipios</option>
+</select>
+
+<label class="etiqueta-filtro" for="filtroAnio">Año</label><select id="filtroAnio">
+
+  <option value="">Todos los años</option>
+</select>
+
+<div id="contenedorBotones">
+  <button id="btnBuscar" type="button">Filtrar</button>
+  <button id="btnLimpiar" type="button">Limpiar</button>
+</div>
+
+<div id="contadorResultados">Cargando registros...</div>
+<div id="resultadosBusqueda"></div>
+
   </div>
 
   <div id="visorDocumento">
@@ -848,5 +853,6 @@
       });
     });
   </script>
+
 </body>
 </html>
